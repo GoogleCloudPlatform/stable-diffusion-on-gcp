@@ -1,0 +1,31 @@
+build-.json
+script.sh
+Stable-Diffusion-UI-Novel/model.ckpt
+Stable-Diffusion-UI-Novel/sd_dreambooth_extension
+Training/**
+!Training/*.py
+!Training/*.sh
+!Training/*.ipynb
+!Training/*.md
+!Training/*.yaml
+!Training/Dockerfile
+Preprocess/**
+!Preprocess/*.py
+!Preprocess/*.sh
+!Preprocess/*.ipynb
+!Preprocess/*.md
+!Preprocess/*.yaml
+
+# Local .terraform directories
+**/.terraform/*
+*.terraform.*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# terraform version lock files
+terraform-provision-infra/.terraform.lock.hcl
+terraform-provision-infra/kubernetes-sample/.terraform.lock.hcl
+
+

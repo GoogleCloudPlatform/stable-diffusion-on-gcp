@@ -1,0 +1,37 @@
+pipelineName: <pipeline-name>
+buildImage: <True|False>
+NFS:
+  enable: <True|False>
+  server: <NFS Server IP Address>
+  path: <NFS server root path>
+  mountPoint: <NFS server mount point>
+gcpSpecs:
+  project_number: <project-number>
+  project_id: <project-id>
+  region: <project-region>
+  pipeline_bucket: <pipeline-bucket-name>
+vertexSpecs:
+  network: projects/<project-number>/global/networks/default
+  workerPoolSpecs:
+    machineSpec:
+      machineType: <machine-type>
+      acceleratorType: <nvidia-gpu-type>
+      acceleratorCount: <nvidia-gpu-count>
+    replicaCount: <machine-number>
+    containerSpec:
+      imageUri: <docker-image-uri>
+modelSpecs:
+    method: kohya_lora
+    model_name: <model-path|hugging-face-repo-id>
+    input_storage: <input-dataset-path>
+    output_storage: <output-dataset-path>
+    display_name: <display-name>
+    lr: "0.0001"
+    unet_lr: "0.00005"
+    text_encoder_lr: "0.0001"
+    lr_scheduler: cosine_with_restarts
+    network_dim: "128"
+    network_alpha: "64"
+    batch_size: "1"
+    save_every_n_epochs: "1"
+    max_train_epochs: "10"

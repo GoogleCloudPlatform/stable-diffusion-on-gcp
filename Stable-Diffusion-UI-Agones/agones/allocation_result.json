@@ -1,0 +1,16 @@
+{
+    "gameServerName": "simple-game-server-l6pxm-dfwfq",
+    "ports": [
+        {
+            "name": "default",
+            "port": 7665
+        },
+        {
+            "name": "sd",
+            "port": 7741
+        }
+    ],
+    "address": "34.69.206.234",
+    "nodeName": "gke-sdnginx-default-pool-c5d35e3a-lhr1",
+    "source": "local"
+}

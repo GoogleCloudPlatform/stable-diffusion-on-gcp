@@ -1,0 +1,74 @@
+# Copyright 2023 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sd-ds-init-disk
+  labels:
+    app: sd-ds-init-disk
+spec:
+  selector:
+    matchLabels:
+      app: sd-ds-init-disk
+  template:
+    metadata:
+      labels:
+        app: sd-ds-init-disk
+    spec:
+      hostPID: true
+      tolerations:
+      - operator: "Exists"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-accelerator
+                operator: Exists
+      # serviceAccountName: workload-identity-ksa
+      nodeSelector:
+        iam.gke.io/gke-metadata-server-enabled: "true"
+      initContainers:
+      - name: init-disk
+        image: {region}-docker.pkg.dev/{project-id}/stable-diffusion-repo/attach-disk-image
+        imagePullPolicy: Always
+        command: ["bash", "-c"]
+        args:
+          - /attach-disk.sh
+        env:
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: IMAGE_NAME
+            value: sd-image
+      containers:
+      - name: sd-ds-init-disk
+        image: gcr.io/google-containers/startup-script:v2
+        imagePullPolicy: Always
+        securityContext:
+          privileged: true
+        env:
+          - name: STARTUP_SCRIPT
+            value: |
+              #!/bin/bash
+              set -euo pipefail
+
+              if [ ! -f  /var/lib/runtime-lib/added-disk.txt ]
+              then
+                mkdir -p /var/lib/runtime-lib
+                mount -o discard,defaults /dev/sdb /var/lib/runtime-lib
+                sleep 10
+                touch /var/lib/runtime-lib/added-disk.txt
+              fi

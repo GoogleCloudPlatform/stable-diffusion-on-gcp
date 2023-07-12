@@ -1,0 +1,51 @@
+diff --git a/train_network.py b/train_network.py
+index 5c4d5ad..7bf60fa 100644
+--- a/train_network.py
++++ b/train_network.py
+@@ -27,12 +27,18 @@ from library.config_util import (
+ import library.huggingface_util as huggingface_util
+ import library.custom_train_functions as custom_train_functions
+ from library.custom_train_functions import apply_snr_weight, get_weighted_text_embeddings
+-
++import hypertune
++hpt = hypertune.HyperTune()
+ 
+ # TODO 他のスクリプトと共通化する
+-def generate_step_logs(args: argparse.Namespace, current_loss, avr_loss, lr_scheduler):
++def generate_step_logs(args: argparse.Namespace, current_loss, avr_loss, lr_scheduler, step):
+     logs = {"loss/current": current_loss, "loss/average": avr_loss}
+-
++    if args.hpo == "y":
++        hpt.report_hyperparameter_tuning_metric(
++            hyperparameter_metric_tag='avr_loss',
++            metric_value=avr_loss,
++            global_step=step)
++    
+     lrs = lr_scheduler.get_last_lr()
+ 
+     if args.network_train_text_encoder_only or len(lrs) <= 2:  # not block lr (or single block)
+@@ -686,7 +692,7 @@ def train(args):
+             progress_bar.set_postfix(**logs)
+ 
+             if args.logging_dir is not None:
+-                logs = generate_step_logs(args, current_loss, avr_loss, lr_scheduler)
++                logs = generate_step_logs(args, current_loss, avr_loss, lr_scheduler, global_step)
+                 accelerator.log(logs, step=global_step)
+ 
+             if global_step >= args.max_train_steps:
+@@ -780,7 +786,9 @@ def setup_parser() -> argparse.ArgumentParser:
+     parser.add_argument(
+         "--training_comment", type=str, default=None, help="arbitrary comment string stored in metadata / メタデータに記録する任意のコメント文字列"
+     )
+-
++    parser.add_argument(
++        "--hpo", type=str, default="y", help="if using hyper parameter tuning"
++    )
+     return parser
+ 
+ 
+@@ -791,3 +799,4 @@ if __name__ == "__main__":
+     args = train_util.read_config_from_file(args, parser)
+ 
+     train(args)
++

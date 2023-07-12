@@ -1,0 +1,39 @@
+diff --git a/examples/dreambooth/train_dreambooth.py b/examples/dreambooth/train_dreambooth.py
+index 52694660..c66dd99f 100644
+--- a/examples/dreambooth/train_dreambooth.py
++++ b/examples/dreambooth/train_dreambooth.py
+@@ -44,7 +44,8 @@ from diffusers import AutoencoderKL, DDPMScheduler, DiffusionPipeline, UNet2DCon
+ from diffusers.optimization import get_scheduler
+ from diffusers.utils import check_min_version
+ from diffusers.utils.import_utils import is_xformers_available
+-
++import hypertune
++hpt = hypertune.HyperTune()
+ 
+ # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
+ check_min_version("0.14.0")
+@@ -340,6 +341,7 @@ def parse_args(input_args=None):
+             " https://pytorch.org/docs/stable/generated/torch.optim.Optimizer.zero_grad.html"
+         ),
+     )
++    parser.add_argument("--hpo", type=str, default="n", help="hyperparameter tuning")
+ 
+     if input_args is not None:
+         args = parser.parse_args(input_args)
+@@ -924,6 +926,11 @@ def main(args):
+             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+             progress_bar.set_postfix(**logs)
+             accelerator.log(logs, step=global_step)
++            if args.hpo == "y":
++                hpt.report_hyperparameter_tuning_metric(
++                    hyperparameter_metric_tag='loss',
++                    metric_value=loss.detach().item(),
++                    global_step=global_step)
+ 
+             if global_step >= args.max_train_steps:
+                 break
+@@ -948,3 +955,4 @@ def main(args):
+ if __name__ == "__main__":
+     args = parse_args()
+     main(args)
++
