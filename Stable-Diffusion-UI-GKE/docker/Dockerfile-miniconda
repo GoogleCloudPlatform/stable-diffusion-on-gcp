@@ -1,17 +1,3 @@
-# Copyright 2023 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 
 RUN set -ex && \
@@ -37,20 +23,19 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
 RUN echo 'conda activate sd-webui' >> /root/.bashrc
 
 RUN . /root/.bashrc \
-    && python3 -m pip install torch torchvision --prefer-binary \
+    && python3 -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118 --prefer-binary \
     && python3 -m pip install git+https://github.com/TencentARC/GFPGAN.git@8d2447a2d918f8eba5a4a01463fd48e45126a379 --prefer-binary \
     && python3 -m pip install git+https://github.com/openai/CLIP.git@d50d76daa670286dd6cacf3bcd80b5e4823fc8e1 --prefer-binary \
     && python3 -m pip install git+https://github.com/mlfoundations/open_clip.git@bb6e834e9c70d9c27d0dc3ecedeebeaeb1ffad6b --prefer-binary \
     && python3 -m pip install --pre xformers --prefer-binary \
     && python3 -m pip install pyngrok --prefer-binary \
-    && git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git \
-    && git -C /stable-diffusion-webui checkout 89f9faa63388756314e8a1d96cf86bf5e0663045 \
+    && git -C https://github.com/AUTOMATIC1111/stable-diffusion-webui.git checkout 89f9faa63388756314e8a1d96cf86bf5e0663045 \
     && git clone https://github.com/Stability-AI/stablediffusion.git /stable-diffusion-webui/repositories/stable-diffusion-stability-ai \
     && git -C /stable-diffusion-webui/repositories/stable-diffusion-stability-ai checkout cf1d67a6fd5ea1aa600c4df58e5b47da45f6bdbf \
     && git clone https://github.com/CompVis/taming-transformers.git /stable-diffusion-webui/repositories/taming-transformers \
     && git -C /stable-diffusion-webui/repositories/taming-transformers checkout 24268930bf1dce879235a7fddd0b2355b84d7ea6 \
     && git clone https://github.com/crowsonkb/k-diffusion.git /stable-diffusion-webui/repositories/k-diffusion \
-    && git -C /stable-diffusion-webui/repositories/k-diffusion checkout 5b3af030dd83e0297272d861c19477735d0317ec \
+    && git -C /stable-diffusion-webui/repositories/k-diffusion checkout c9fe758757e022f05ca5a53fa8fac28889e4f1cf \
     && git clone https://github.com/sczhou/CodeFormer.git /stable-diffusion-webui/repositories/CodeFormer \
     && git -C /stable-diffusion-webui/repositories/CodeFormer checkout c5b4593074ba6214284d6acd5f1719b6c5d739af \
     && git clone https://github.com/salesforce/BLIP.git /stable-diffusion-webui/repositories/BLIP \
@@ -67,18 +52,19 @@ RUN set -ex && cd stable-diffusion-webui \
     && git -C https://github.com/zanllp/sd-webui-infinite-image-browsing.git extensions/sd-webui-infinite-image-browsing checkout 4720b15126c3ee05e97d50108050d1178e50639b \
     && git clone https://github.com/aria1th/Hypernetwork-MonkeyPatch-Extension.git extensions/Hypernetwork-MonkeyPatch-Extension \
     && git clone https://github.com/butaixianran/Stable-Diffusion-Webui-Civitai-Helper.git extensions/Stable-Diffusion-Webui-Civitai-Helper \
-    && git clone https://github.com/ilian6806/stable-diffusion-webui-state.git extensions/stable-diffusion-webui-state
+    && git clone https://github.com/ilian6806/stable-diffusion-webui-state.git extensions/stable-diffusion-webui-state \
+    && git clone https://github.com/vladmandic/sd-extension-system-info extensions/sd-extension-system-info
 
 RUN . /root/.bashrc \
     && python3 -m pip install -r /stable-diffusion-webui/extensions/sd-webui-controlnet/requirements.txt --prefer-binary
-
-ENV SAFETENSORS_FAST_GPU=1
-ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
 
 # COPY extensions/ /stable-diffusion-webui/extensions/
 # COPY user-watch.py /stable-diffusion-webui/user-watch.py
 # COPY start.sh /stable-diffusion-webui/start.sh
 COPY *.json /stable-diffusion-webui/
+
+ENV SAFETENSORS_FAST_GPU=1
+ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
 
 EXPOSE 7860
 

@@ -11,6 +11,7 @@
 | [Stable-Diffusion-UI-GKE](./Stable-Diffusion-UI-GKE/README.md) | 使用 GKE 托管 Stable Diffusion WebUI 的所有 YAML 文件和 Dockerfile 的演示。 |
 | [Stable-Diffusion-Vertex](./Stable-Diffusion-Vertex/README_cn.md) | DreamBooth & Lora 在 Vertex AI 上训练的参考代码 |
 | [terraform-provision-infra](./terraform-provision-infra/README_zh.md) | 用于创建演示环境的 Terraform 脚本和资源。 |
+| [examples](./examples) | 工作目录的示例文件夹 | 
 
 
 ## 介绍
@@ -110,7 +111,7 @@ kubectl scale --replicas=1 stable-diffusion-deployment
 kubectl delete fleet sd-agones-fleet
 ```
 ### 如何保持sd-webui settings里的设置？
-有两种方式 \
+有两种方式
 1. 设置config.json/ui-config.json的golden copy并打包到容器中
 需要设置的项往往集中在其中几项目（e.g. UI中开启VAE选择、设置CLIP Skip、设置multi-controlnet等），且不需要频繁修改。
 该方式实施简单，因此作为推荐选项

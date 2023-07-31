@@ -1,17 +1,3 @@
-# Copyright 2023 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
 # FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
 
@@ -20,11 +6,11 @@ RUN set -ex && \
     apt install -y wget git python3 python3-venv python3-pip libglib2.0-0 pkg-config libcairo2-dev ffmpeg libsm6 libxext6 libtcmalloc-minimal4 && \
     rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install torch torchvision --prefer-binary
+RUN python3 -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118 --prefer-binary
 RUN python3 -m pip install git+https://github.com/TencentARC/GFPGAN.git@8d2447a2d918f8eba5a4a01463fd48e45126a379 --prefer-binary
 RUN python3 -m pip install git+https://github.com/openai/CLIP.git@d50d76daa670286dd6cacf3bcd80b5e4823fc8e1 --prefer-binary
 RUN python3 -m pip install git+https://github.com/mlfoundations/open_clip.git@bb6e834e9c70d9c27d0dc3ecedeebeaeb1ffad6b --prefer-binary
-RUN python3 -m pip install xformers --prefer-binary
+# RUN python3 -m pip install xformers --prefer-binary
 RUN python3 -m pip install pyngrok --prefer-binary
 RUN git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
 RUN git -C /stable-diffusion-webui checkout 89f9faa63388756314e8a1d96cf86bf5e0663045
@@ -51,7 +37,8 @@ RUN set -ex && cd stable-diffusion-webui \
     && git -C /stable-diffusion-webui/extensions/sd-webui-infinite-image-browsing checkout 4720b15126c3ee05e97d50108050d1178e50639b \
     && git clone https://github.com/aria1th/Hypernetwork-MonkeyPatch-Extension.git extensions/Hypernetwork-MonkeyPatch-Extension \
     && git clone https://github.com/butaixianran/Stable-Diffusion-Webui-Civitai-Helper.git extensions/Stable-Diffusion-Webui-Civitai-Helper \
-    && git clone https://github.com/ilian6806/stable-diffusion-webui-state.git extensions/stable-diffusion-webui-state
+    && git clone https://github.com/ilian6806/stable-diffusion-webui-state.git extensions/stable-diffusion-webui-state \
+    && git clone https://github.com/vladmandic/sd-extension-system-info extensions/sd-extension-system-info
     # && git clone https://github.com/continue-revolution/sd-webui-segment-anything extensions/sd-webui-segment-anything
 
 RUN python3 -m pip install -r /stable-diffusion-webui/extensions/sd-webui-controlnet/requirements.txt --prefer-binary
@@ -68,4 +55,4 @@ EXPOSE 7860
 COPY *.json /stable-diffusion-webui/
 
 WORKDIR /stable-diffusion-webui/
-CMD ["python3", "webui.py", "--listen", "--xformers", "--enable-insecure-extension-access", "--api"]
+CMD ["python3", "webui.py", "--listen", "--opt-sdp-attention", "--enable-insecure-extension-access", "--api"]
