@@ -53,7 +53,8 @@ RUN set -ex && cd stable-diffusion-webui \
     && git clone https://github.com/aria1th/Hypernetwork-MonkeyPatch-Extension.git extensions/Hypernetwork-MonkeyPatch-Extension \
     && git clone https://github.com/butaixianran/Stable-Diffusion-Webui-Civitai-Helper.git extensions/Stable-Diffusion-Webui-Civitai-Helper \
     && git clone https://github.com/ilian6806/stable-diffusion-webui-state.git extensions/stable-diffusion-webui-state \
-    && git clone https://github.com/vladmandic/sd-extension-system-info extensions/sd-extension-system-info
+    && git clone https://github.com/vladmandic/sd-extension-system-info extensions/sd-extension-system-info \
+    && git clone https://github.com/ArtVentureX/sd-webui-agent-scheduler.git extensions/agent-scheduler
 
 RUN . /root/.bashrc \
     && python3 -m pip install -r /stable-diffusion-webui/extensions/sd-webui-controlnet/requirements.txt --prefer-binary
