@@ -26,6 +26,7 @@ RUN git clone https://github.com/salesforce/BLIP.git /stable-diffusion-webui/rep
 RUN git -C /stable-diffusion-webui/repositories/BLIP checkout 48211a1594f1321b00f14c9f7a5b4813144b2fb9
 RUN python3 -m pip install -r /stable-diffusion-webui/repositories/CodeFormer/requirements.txt --prefer-binary
 RUN python3 -m pip install -r /stable-diffusion-webui/requirements_versions.txt --prefer-binary
+RUN python3 -m pip install sqlalchemy --prefer-binary
 
 RUN set -ex && cd stable-diffusion-webui \
     && git clone https://github.com/kohya-ss/sd-webui-additional-networks.git extensions/sd-webui-additional-networks \
