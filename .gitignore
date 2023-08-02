@@ -15,6 +15,7 @@ Preprocess/**
 !Preprocess/*.ipynb
 !Preprocess/*.md
 !Preprocess/*.yaml
+workdir/**
 
 # Local .terraform directories
 **/.terraform/*
