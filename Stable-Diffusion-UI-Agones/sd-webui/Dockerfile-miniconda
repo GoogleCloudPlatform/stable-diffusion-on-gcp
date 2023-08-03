@@ -58,6 +58,7 @@ RUN set -ex && cd stable-diffusion-webui \
 
 RUN . /root/.bashrc \
     && python3 -m pip install -r /stable-diffusion-webui/extensions/sd-webui-controlnet/requirements.txt --prefer-binary
+    && python3 -m pip install sqlalchemy --prefer-binary
 
 COPY extensions/ /stable-diffusion-webui/extensions/
 COPY user-watch.py /stable-diffusion-webui/user-watch.py
