@@ -14,5 +14,4 @@
 # limitations under the License.
 
 python3 user-watch.py &
-python3 webui.py --listen --opt-sdp-attention --enable-insecure-extension-access --api
-
+python3 webui.py --listen --xformers --opt-sdp-attention --enable-insecure-extension-access --no-half-vae --disable-safe-unpickle --api
