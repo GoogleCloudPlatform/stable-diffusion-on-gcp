@@ -20,8 +20,9 @@ you can use the cloud shell as the run time to do below steps.
 gcloud services enable compute.googleapis.com artifactregistry.googleapis.com container.googleapis.com file.googleapis.com vpcaccess.googleapis.com redis.googleapis.com cloudscheduler.googleapis.com
 ```
 ### Create GKE Cluster
-do the following step using the cloud shell. This guide using the T4 GPU node as the VM host, by your choice you can change the node type with [other GPU instance type](https://cloud.google.com/compute/docs/gpus).
-In this guide we also enabled [Filestore CSI driver](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/filestore-csi-driver) for models/outputs sharing.
+Do the following step using the cloud shell. This guide using the T4 GPU node as the VM host, by your choice you can change the node type with [other GPU instance type](https://cloud.google.com/compute/docs/gpus). \
+In this guide we also by default enabled [Filestore CSI driver](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/filestore-csi-driver) for models/outputs sharing. \
+If you wish to use [GcsFuse CSI driver](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/cloud-storage-fuse-csi-driver) instead, please follow the notes below for GcsFuse.
 
 ```
 PROJECT_ID=<replace this with your project id>
@@ -42,8 +43,47 @@ gcloud beta container --project ${PROJECT_ID} clusters create ${GKE_CLUSTER_NAME
     --addons HorizontalPodAutoscaling,HttpLoadBalancing,GcePersistentDiskCsiDriver,GcpFilestoreCsiDriver \
     --autoscaling-profile optimize-utilization
 
-gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" --cluster ${GKE_CLUSTER_NAME} --region ${REGION} --machine-type "custom-4-49152-ext" --accelerator "type=nvidia-tesla-t4,count=1" --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "100" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/cloud-platform" --enable-autoscaling --total-min-nodes "0" --total-max-nodes "6" --location-policy "ANY" --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --max-pods-per-node "110" --num-nodes "0"
+gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" --cluster ${GKE_CLUSTER_NAME} --region ${REGION} --machine-type "custom-4-32768-ext" --accelerator "type=nvidia-tesla-t4,count=1" --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "200" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/cloud-platform" --enable-autoscaling --total-min-nodes "0" --total-max-nodes "6" --location-policy "ANY" --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --max-pods-per-node "110" --num-nodes "0"
 ```
+**NOTE: If you are going to use GCS CSI instead, create the cluster with the steps below**
+```
+# Create GKE cluster with workload identity enabled
+gcloud beta container --project ${PROJECT_ID} clusters create ${GKE_CLUSTER_NAME} --region ${REGION} \
+    --no-enable-basic-auth --release-channel "regular" \
+    --machine-type "e2-medium" \
+    --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "100" \
+    --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" \
+    --num-nodes "1" --logging=SYSTEM,WORKLOAD --monitoring=SYSTEM \
+    # uncomment below for private cluster 
+    # --enable-private-nodes --master-ipv4-cidr "172.16.0.0/28" \
+    --enable-master-global-access --enable-ip-alias \
+    --network "projects/${PROJECT_ID}/global/networks/${VPC_NETWORK}" \
+    --subnetwork "projects/${PROJECT_ID}/regions/${REGION}/subnetworks/${VPC_SUBNETWORK}" \
+    --no-enable-intra-node-visibility --default-max-pods-per-node "110" --enable-autoscaling \
+    --total-min-nodes "0" --total-max-nodes "3" --location-policy "ANY" --security-posture=standard \
+    --workload-vulnerability-scanning=standard --no-enable-master-authorized-networks \
+    --addons HorizontalPodAutoscaling,HttpLoadBalancing,GcePersistentDiskCsiDriver,GcpFilestoreCsiDriver \
+    --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --binauthz-evaluation-mode=DISABLED \
+    --enable-managed-prometheus --workload-pool "${PROJECT_ID}.svc.id.goog" --enable-shielded-nodes
+
+# For existing cluster,
+
+gcloud container clusters update ${GKE_CLUSTER_NAME} \
+    --region=${REGION} \
+    --workload-pool="${PROJECT_ID}.svc.id.goog"
+
+# Enable GcsFuseCsiDriver
+
+gcloud container clusters update ${GKE_CLUSTER_NAME} \
+    --update-addons GcsFuseCsiDriver=ENABLED \
+    --region=${REGION}
+
+# GPU node pool suggest 200GB disk size, because GcsFuse sidecar need default 50GiB for buffer,
+# refer to https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/cloud-storage-fuse-csi-driver#sidecar-container
+
+gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" --cluster ${GKE_CLUSTER_NAME} --region ${REGION} --machine-type "custom-4-32768-ext" --accelerator "type=nvidia-tesla-t4,count=1" --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "200" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/cloud-platform" --enable-autoscaling --total-min-nodes "0" --total-max-nodes "4" --location-policy "ANY" --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --max-pods-per-node "110" --num-nodes "0"
+```
+
 **NOTE: If you are creating a private GKE cluster, setup a firewall rule to allow**
 1. all internal CIDR(10.0.0.0/8, 172.16.0.0/16, 192.168.0.0/24). Specifically, CIDR range for pod, but using all internal CIDR will be easier.
 2. for TCP port 443/8080/8081 & 7000-8000 and UDP port 7000-8000
@@ -83,7 +123,7 @@ docker build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webu
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1
 
 ```
-
+**Note: If you are using GcsFuse CSI, you don't need to create Filestore**
 ### Create Filestore
 Create Filestore storage, mount and prepare files and folders for models/outputs/training data
 You should prepare a VM to mount the filestore instance.
@@ -103,6 +143,15 @@ Deploy the PV and PVC resource, replace the nfs-server-ip using the nfs instance
 ```
 kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pv.yaml
 kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pvc.yaml
+```
+
+**Note: If you are using Filestore CSI, you don't need to create Gcs bucket**
+### Create GcsFuse bucket
+Follow step 1 & 2 from this [GcsFuse guide](https://github.com/GoogleCloudPlatform/gcs-fuse-csi-driver/blob/main/docs/authentication.md) to setup bucket and IAM. \
+After that, update the bucket name variable in gcs_pv.yaml, and run
+```
+kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/gcs_pv.yaml
+kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/gcs_pvc.yaml
 ```
 
 ### Install Agones
@@ -149,7 +198,7 @@ docker build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agon
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1
 ```
 
-### Deploy stable-diffusion agones deployment
+### Deploy stable-diffusion agones deployment(Filestore CSI)
 Deploy stable-diffusion agones deployment, please replace the image URL in the deployment.yaml and fleet yaml with the image built(nginx, optional agones-sidecar and sd-webui) before.
 ```
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones
@@ -166,6 +215,44 @@ kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx/deploy
 kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones/fleet_pvc.yaml
 kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones/fleet_autoscale.yaml
 ```
+
+### Deploy stable-diffusion agones deployment(GcsFuse CSI)
+Deploy stable-diffusion agones deployment, please replace the image URL in the deployment.yaml and fleet yaml with the image built(nginx, optional agones-sidecar and sd-webui) before. \
+Before apply the deployment, setup Kubernetes service account binding with IAM account, referencing step 4 from this [GcsFuse guide](https://github.com/GoogleCloudPlatform/gcs-fuse-csi-driver/blob/main/docs/authentication.md). \
+We should use existing Kubernetes service account for Agones, i.e. agones-sdk instead of creating new one, because we are using agones-sdk to create fleets.
+```
+CLUSTER_PROJECT_ID=<replace it with the cluster project id>
+GCS_BUCKET_PROJECT_ID=<replace it with the bucket project id>
+GCP_SA_NAME=<replace it with the IAM service account to access the GCS bucket>
+
+K8S_NAMESPACE=default
+K8S_SA_NAME=agones-sdk
+
+gcloud iam service-accounts add-iam-policy-binding ${GCP_SA_NAME}@${GCS_BUCKET_PROJECT_ID}.iam.gserviceaccount.com \
+    --role roles/iam.workloadIdentityUser \
+    --member "serviceAccount:${CLUSTER_PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${K8S_SA_NAME}]"
+
+kubectl annotate serviceaccount ${K8S_SA_NAME} \
+    --namespace ${K8S_NAMESPACE} \
+    iam.gke.io/gcp-service-account=${GCP_SA_NAME}@${GCS_BUCKET_PROJECT_ID}.iam.gserviceaccount.com
+```
+After that, remaining steps are the same, just remind to use fleet_gcs.yaml instead.
+```
+cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones
+sed "s@image:.*simple-game-server:0.14@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1@" fleet_gcs.yaml > _tmp
+sed "s@image:.*sd-webui:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1@" _tmp > fleet_gcs.yaml
+cd -
+
+cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx
+sed "s@image:.*sd-nginx:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1@" deployment.yaml > _tmp
+mv _tmp deployment.yaml
+cd -
+
+kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx/deployment.yaml
+kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones/fleet_gcs.yaml
+kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones/fleet_autoscale.yaml
+```
+
 
 ### Prepare Cloud Function Serverless VPC Access
 Create serverless VPC access connector, which is used by cloud function to connect the private connection endpoint.
@@ -248,8 +335,8 @@ gcloud filestore instances delete ${FILESTORE_NAME} --zone=${FILESTORE_ZONE}
 ```
 
 
-### FAQ
-#### How could I troubleshooting if I get 502?
+## FAQ
+### How could I troubleshooting if I get 502?
 It is normal if you get 502 before pod is ready, you may have to wait for a few minutes for containers to be ready(usually less than 10mins), then refresh the page.
 If it is much longer then expected, then
 
@@ -271,15 +358,14 @@ del *
 ```
 4. Check cloud scheduler & cloud function, the last run status should be "OK", otherwise check the logs.
 
-#### Why there is a simple-game-server container in the fleet?
+### Why there is a simple-game-server container in the fleet?
 This is an example game server from agones, we leverage it as a game server sdk to interact with agones control plane without additional coding and change to webui.
 The nginx+lua will call simple-game-server to indirectly interact with agones for resource allication and release.
 
-#### How can I upload file to the pod?
+### How can I upload file to the pod?
 We made an example [script](./Stable-Diffusion-UI-Agones/sd-webui/extensions/stable-diffusion-webui-udload/scripts/udload.py) to work as an extension for file upload.
 Besides, you can use extensions for image browsing and downloading(https://github.com/zanllp/sd-webui-infinite-image-browsing), model/lora downloading(https://github.com/butaixianran/Stable-Diffusion-Webui-Civitai-Helper) and more.
 
-#### How to persist the settings in SD Webui?
+### How to persist the settings in SD Webui?
 sd-webui only load config.json/ui-config.json on startup. If you click apply settings, it would write the current settings in UI to the config files, so we could not persist the two files with symlink trick.
 One workaround is to make golden config files and pack them to the Docker image. We have an [example](../examples/sd-webui/Dockerfile) to make settings of "quicksettings_list": ["sd_model_checkpoint","sd_vae","CLIP_stop_at_last_layers"] persist.
-=======
