@@ -50,7 +50,7 @@ module "helm_agones" {
   project_id           = local.project_id
   gke_cluster_name     = module.agones_gcp_res.kubernetes_cluster_name
   gke_cluster_location = module.agones_gcp_res.gke_location
-  gke_cluster_nodepool = module.agones_gcp_res.gpu_nodepool_name
+  agones_version       = "1.32.0"
 }
 
 module "agones_k8s_res" {
@@ -61,7 +61,6 @@ module "agones_k8s_res" {
   sd_webui_domain                    = local.sd_webui_domain
   gke_cluster_name                   = module.agones_gcp_res.kubernetes_cluster_name
   gke_cluster_location               = module.agones_gcp_res.gke_location
-  gke_cluster_nodepool               = module.agones_gcp_res.gpu_nodepool_name
   google_filestore_reserved_ip_range = module.agones_gcp_res.google_filestore_reserved_ip_range
   webui_address_name                 = module.agones_gcp_res.webui_address_name
   nginx_image_url                    = module.agones_build_image.nginx_image
