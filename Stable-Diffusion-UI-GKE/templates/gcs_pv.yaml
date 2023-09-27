@@ -1,5 +1,4 @@
-#!/bin/bash
-# Copyright 2023 Google LLC All Rights Reserved.
+# Copyright 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,5 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-python3 user-watch.py &
-python3 webui.py --listen --xformers --opt-sdp-attention --enable-insecure-extension-access --no-half-vae --disable-safe-unpickle --api
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gcs-fuse-csi-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 5Ti
+  storageClassName: example-storage-class
+  claimRef:
+    namespace: default
+    name: gcs-fuse-csi-static-pvc
+  mountOptions:
+    - implicit-dirs
+  csi:
+    driver: gcsfuse.csi.storage.gke.io
+    volumeHandle: $gcs_bucket_name
