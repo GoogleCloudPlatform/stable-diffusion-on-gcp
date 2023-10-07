@@ -29,4 +29,5 @@ workdir/**
 terraform-provision-infra/.terraform.lock.hcl
 terraform-provision-infra/kubernetes-sample/.terraform.lock.hcl
 
-
+# others
+.vscode/

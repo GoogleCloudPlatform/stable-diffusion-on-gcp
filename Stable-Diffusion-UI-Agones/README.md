@@ -14,10 +14,29 @@ This guide give simple steps for stable-diffusion users to launch a stable diffu
 ## How To
 you can use the cloud shell as the run time to do below steps.
 ### Before you begin
-1. make sure you have an available GCP project for your deployment
+1. Make sure you have an available GCP project for your deployment
 2. Enable the required service API using [cloud shell](https://cloud.google.com/shell/docs/run-gcloud-commands)
 ```
-gcloud services enable compute.googleapis.com artifactregistry.googleapis.com container.googleapis.com file.googleapis.com vpcaccess.googleapis.com redis.googleapis.com cloudscheduler.googleapis.com
+gcloud services enable compute.googleapis.com artifactregistry.googleapis.com container.googleapis.com file.googleapis.com vpcaccess.googleapis.com redis.googleapis.com cloudscheduler.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com
+```
+3. Exempt below organization policy constraints in your project
+```
+constraints/compute.vmExternalIpAccess
+constraints/compute.requireShieldedVm  
+constraints/cloudfunctions.allowedIngressSettings
+```
+### Initialize the environment
+
+```
+PROJECT_ID=<replace this with your PROJECT ID>
+GKE_CLUSTER_NAME=<replace this with your GKE cluster name>
+REGION=<replace this with your region>
+VPC_NETWORK=<replace this with your VPC network name>
+VPC_SUBNETWORK=<replace this with your VPC subnetwork name>
+BUILD_REGIST=<replace this with your preferred Artifact Registry repository name>
+FILESTORE_NAME=<replace with Filestore instance name>
+FILESTORE_ZONE=<replace with Filestore instance zone>
+FILESHARE_NAME=<replace with fileshare name>
 ```
 ### Create GKE Cluster
 Do the following step using the cloud shell. This guide using the T4 GPU node as the VM host, by your choice you can change the node type with [other GPU instance type](https://cloud.google.com/compute/docs/gpus). \
@@ -25,25 +44,35 @@ In this guide we also by default enabled [Filestore CSI driver](https://cloud.go
 If you wish to use [GcsFuse CSI driver](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/cloud-storage-fuse-csi-driver) instead, please follow the notes below for GcsFuse.
 
 ```
-PROJECT_ID=<replace this with your project id>
-GKE_CLUSTER_NAME=<replace this with your GKE cluster name>
-REGION=<replace this with your region>
-VPC_NETWORK=<replace this with your vpc network name>
-VPC_SUBNETWORK=<replace this with your vpc subnetwork name>
-
 gcloud beta container --project ${PROJECT_ID} clusters create ${GKE_CLUSTER_NAME} --region ${REGION} \
     --no-enable-basic-auth --release-channel "None" \
     --machine-type "e2-standard-2" \
     --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "100" \
     --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/cloud-platform" \
-    --num-nodes "1" --logging=SYSTEM,WORKLOAD --monitoring=SYSTEM --enable-ip-alias \
+    --num-nodes "1" --logging=SYSTEM,WORKLOAD --monitoring=SYSTEM \
+    # uncomment below for private cluster 
+    # --enable-private-nodes --master-ipv4-cidr "172.16.0.0/28" --enable-master-global-access \
+    --enable-ip-alias \
     --network "projects/${PROJECT_ID}/global/networks/${VPC_NETWORK}" \
     --subnetwork "projects/${PROJECT_ID}/regions/${REGION}/subnetworks/${VPC_SUBNETWORK}" \
     --no-enable-intra-node-visibility --default-max-pods-per-node "110" --no-enable-master-authorized-networks \
     --addons HorizontalPodAutoscaling,HttpLoadBalancing,GcePersistentDiskCsiDriver,GcpFilestoreCsiDriver \
     --autoscaling-profile optimize-utilization
 
-gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" --cluster ${GKE_CLUSTER_NAME} --region ${REGION} --machine-type "custom-4-32768-ext" --accelerator "type=nvidia-tesla-t4,count=1" --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "200" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/cloud-platform" --enable-autoscaling --total-min-nodes "0" --total-max-nodes "6" --location-policy "ANY" --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --max-pods-per-node "110" --num-nodes "0"
+gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" \
+	--cluster ${GKE_CLUSTER_NAME} \
+	--region ${REGION} \
+	--machine-type "custom-4-32768-ext" \
+	--accelerator "type=nvidia-tesla-t4,count=1" \
+	--image-type "COS_CONTAINERD" \
+	--disk-type "pd-balanced" \
+	--disk-size "100" \
+	--metadata disable-legacy-endpoints=true \
+	--scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" \
+	--num-nodes "1" \
+	--enable-autoscaling \
+	--total-min-nodes "0" --total-max-nodes "3" \
+	--location-policy "ANY" --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0
 ```
 **NOTE: If you are going to use GCS CSI instead, create the cluster with the steps below**
 ```
@@ -55,8 +84,8 @@ gcloud beta container --project ${PROJECT_ID} clusters create ${GKE_CLUSTER_NAME
     --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" \
     --num-nodes "1" --logging=SYSTEM,WORKLOAD --monitoring=SYSTEM \
     # uncomment below for private cluster 
-    # --enable-private-nodes --master-ipv4-cidr "172.16.0.0/28" \
-    --enable-master-global-access --enable-ip-alias \
+    # --enable-private-nodes --master-ipv4-cidr "172.16.0.0/28" --enable-master-global-access \
+    --enable-ip-alias \
     --network "projects/${PROJECT_ID}/global/networks/${VPC_NETWORK}" \
     --subnetwork "projects/${PROJECT_ID}/regions/${REGION}/subnetworks/${VPC_SUBNETWORK}" \
     --no-enable-intra-node-visibility --default-max-pods-per-node "110" --enable-autoscaling \
@@ -81,13 +110,35 @@ gcloud container clusters update ${GKE_CLUSTER_NAME} \
 # GPU node pool suggest 200GB disk size, because GcsFuse sidecar need default 50GiB for buffer,
 # refer to https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/cloud-storage-fuse-csi-driver#sidecar-container
 
-gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" --cluster ${GKE_CLUSTER_NAME} --region ${REGION} --machine-type "custom-4-32768-ext" --accelerator "type=nvidia-tesla-t4,count=1" --image-type "COS_CONTAINERD" --disk-type "pd-balanced" --disk-size "200" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/cloud-platform" --enable-autoscaling --total-min-nodes "0" --total-max-nodes "4" --location-policy "ANY" --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --max-pods-per-node "110" --num-nodes "0"
+gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" \
+	--cluster ${GKE_CLUSTER_NAME} \
+	--region ${REGION} \
+	--machine-type "custom-4-32768-ext" \
+	--accelerator "type=nvidia-tesla-t4,count=1" \
+	--image-type "COS_CONTAINERD" \
+	--disk-type "pd-balanced" \
+	--disk-size "200" \
+	--metadata disable-legacy-endpoints=true \
+	--scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" \
+	--num-nodes "1" \
+	--enable-autoscaling \
+	--total-min-nodes "0" --total-max-nodes "3" \
+	--location-policy "ANY" --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0
 ```
 
-**NOTE: If you are creating a private GKE cluster, setup a firewall rule to allow**
-1. all internal CIDR(10.0.0.0/8, 172.16.0.0/16, 192.168.0.0/24). Specifically, CIDR range for pod, but using all internal CIDR will be easier.
-2. for TCP port 443/8080/8081 & 7000-8000 and UDP port 7000-8000
-3. for source tag as gke node tag, e.g. gke-gke-01-7267dc32-node, you can find it in your VM console.
+### Firewall rule setup for Agones
+1. For public cluster, allow 0.0.0.0/0
+2. For private cluster, allow access from all internal CIDR(10.0.0.0/8, 172.16.0.0/16, 192.168.0.0/24). Specifically, CIDR range for pod, but using all internal CIDR will be easier.
+3. TCP port 443/8080/8081 & 7000-8000 and UDP port 7000-8000
+4. For Target use gke node tag as target tag, e.g. gke-gke-01-7267dc32-node, you can find it in your VM console.
+
+```
+gcloud compute firewall-rules create allow-agones \
+	--direction=INGRESS --priority=1000 --network=${VPC_NETWORK} --action=ALLOW \
+	--rules=tcp:443,tcp:8080,tcp:8081,tcp:7000-8000,udp:7000-8000 \
+	--source-ranges=0.0.0.0/0 \
+	--target-tags=${GKE_NODE_NETWORK_TAG}
+```
 
 ### Get credentials of GKE cluster
 ```
@@ -123,17 +174,21 @@ docker build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webu
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1
 
 ```
+You can also build it with Cloud Build.
+```
+gcloud builds submit \
+--machine-type=e2-highcpu-32 \
+--disk-size=100 \
+--region=us-central1 \
+-t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1
+```
+
 **Note: If you are using GcsFuse CSI, you don't need to create Filestore**
 ### Create Filestore
 Create Filestore storage, mount and prepare files and folders for models/outputs/training data
 You should prepare a VM to mount the filestore instance.
 
 ```
-FILESTORE_NAME=<replace with filestore instance name>
-FILESTORE_ZONE=<replace with filestore instance zone>
-FILESHARE_NAME=<replace with fileshare name>
-
-
 gcloud filestore instances create ${FILESTORE_NAME} --zone=${FILESTORE_ZONE} --tier=BASIC_HDD --file-share=name=${FILESHARE_NAME},capacity=1TB --network=name=${VPC_NETWORK}
 e.g. 
 gcloud filestore instances create nfs-store --zone=us-central1-b --tier=BASIC_HDD --file-share=name="vol1",capacity=1TB --network=name=${VPC_NETWORK}
@@ -141,6 +196,8 @@ gcloud filestore instances create nfs-store --zone=us-central1-b --tier=BASIC_HD
 ```
 Deploy the PV and PVC resource, replace the nfs-server-ip using the nfs instance's ip address that created before in the file nfs_pv.yaml. The yaml file is located in ./Stable-Diffusion-UI-Agones/agones/ folder.
 ```
+sed -i 's/<nfs-server-ip>/'"${FILESTORE_SERVER_IP}"'/g' ./Stable-Diffusion-UI-Agones/agones/nfs_pv.yaml
+
 kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pv.yaml
 kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pvc.yaml
 ```
@@ -162,7 +219,8 @@ helm repo add agones https://agones.dev/chart/stable
 helm repo update
 kubectl create namespace agones-system
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones
-helm install sd-agones-release --namespace agones-system -f ./agones/values.yaml agones/agones
+# Current agones setup require agones<=1.33.0
+helm install sd-agones-release --namespace agones-system -f ./agones/values.yaml agones/agones --version 1.33.0
 ```
 
 ### Create Redis Cache
@@ -176,17 +234,24 @@ Record the redis instance connection ip address.
 gcloud redis instances describe sd-agones-cache --region ${REGION} --format=json | jq .host
 ```
 
-### Build nginx proxy image
+### Build Nginx proxy image
 Build image with provided Dockerfile, push to repo in Cloud Artifacts. Please replace ${REDIS_HOST} in the gcp-stable-diffusion-build-deploy/Stable-Diffusion-UI-Agones/nginx/sd.lua with the ip address record in previous step.
 
 ```
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx
 REDIS_IP=$(gcloud redis instances describe sd-agones-cache --region ${REGION} --format=json 2>/dev/null | jq .host)
-sed "s@\"\${REDIS_HOST}\"@${REDIS_IP}@g" sd.lua > _tmp
-mv _tmp sd.lua
+sed -i "s@\"\${REDIS_HOST}\"@${REDIS_IP}@g" sd.lua
 
 docker build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1
+```
+Or use Cloud Build.
+```
+gcloud builds submit \
+--machine-type=e2-highcpu-32 \
+--disk-size=100 \
+--region=us-central1 \
+-t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1
 ```
 
 ### Build agones-sidecar image
@@ -197,18 +262,25 @@ cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones-sidecar
 docker build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1
 ```
+Or use Cloud Build.
+```
+gcloud builds submit \
+--machine-type=e2-highcpu-32 \
+--disk-size=100 \
+--region=us-central1 \
+-t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1
+```
 
 ### Deploy stable-diffusion agones deployment(Filestore CSI)
 Deploy stable-diffusion agones deployment, please replace the image URL in the deployment.yaml and fleet yaml with the image built(nginx, optional agones-sidecar and sd-webui) before.
 ```
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones
-sed "s@image:.*simple-game-server:0.14@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1@" fleet_pvc.yaml > _tmp
-sed "s@image:.*sd-webui:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1@" _tmp > fleet_pvc.yaml
+sed -i "s@image:.*simple-game-server:0.14@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1@" fleet_pvc.yaml
+sed -i "s@image:.*sd-webui:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1@" fleet_pvc.yaml
 cd -
 
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx
-sed "s@image:.*sd-nginx:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1@" deployment.yaml > _tmp
-mv _tmp deployment.yaml
+sed -i "s@image:.*sd-nginx:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1@" deployment.yaml
 cd -
 
 kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx/deployment.yaml
@@ -239,13 +311,12 @@ kubectl annotate serviceaccount ${K8S_SA_NAME} \
 After that, remaining steps are the same, just remind to use fleet_gcs.yaml instead.
 ```
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones
-sed "s@image:.*simple-game-server:0.14@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1@" fleet_gcs.yaml > _tmp
-sed "s@image:.*sd-webui:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1@" _tmp > fleet_gcs.yaml
+sed -i "s@image:.*simple-game-server:0.14@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1@" fleet_gcs.yaml
+sed -i "s@image:.*sd-webui:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1@" fleet_gcs.yaml
 cd -
 
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx
-sed "s@image:.*sd-nginx:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1@" deployment.yaml > _tmp
-mv _tmp deployment.yaml
+sed -i "s@image:.*sd-nginx:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1@" deployment.yaml
 cd -
 
 kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx/deployment.yaml
@@ -255,7 +326,7 @@ kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones/fleet
 
 
 ### Prepare Cloud Function Serverless VPC Access
-Create serverless VPC access connector, which is used by cloud function to connect the private connection endpoint.
+Create serverless VPC access connector, which is used by cloud function to connect Redis through the private connection endpoint.
 ```
 gcloud compute networks vpc-access connectors create sd-agones-connector --network ${VPC_NETWORK} --region ${REGION} --range 192.168.240.16/28
 ```
@@ -330,7 +401,7 @@ gcloud compute networks vpc-access connectors delete sd-agones-connector --regio
 gcloud artifacts repositories delete ${BUILD_REGIST} \
     --location=us-central1 --async
 
-gcloud redis instances delete --project=${PROJECT_ID} sd-agones-cache
+gcloud redis instances delete --project=${PROJECT_ID} sd-agones-cache --region ${REGION}
 gcloud filestore instances delete ${FILESTORE_NAME} --zone=${FILESTORE_ZONE}
 ```
 

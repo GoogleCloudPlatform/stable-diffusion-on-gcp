@@ -45,9 +45,15 @@ spec:
           - name: stable-diffusion-webui
             image: us-central1-docker.pkg.dev/<PROJECT_ID>/<BUILD_REGIST>/sd-webui:0.1
             command: ["/bin/sh", "start.sh"]
+            # https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/6722
+            env:
+            - name: SAFETENSORS_FAST_GPU
+              value: "1" 
+            - name: LD_PRELOAD
+              value: "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
             volumeMounts:
             - name: stable-diffusion-storage
-              mountPath: /result
+              mountPath: /sd_dir
             resources:
               limits:
                 nvidia.com/gpu: 1
