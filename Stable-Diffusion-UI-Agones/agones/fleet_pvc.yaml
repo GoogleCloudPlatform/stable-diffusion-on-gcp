@@ -34,7 +34,7 @@ spec:
           containers:
           - name: simple-game-server
             # image: us-docker.pkg.dev/agones-images/examples/simple-game-server:0.14
-            image: us-central1-docker.pkg.dev/<PROJECT_ID>/<BUILD_REGIST>/sd-agones-sidecar:0.1
+            image: <REGION>-docker.pkg.dev/<PROJECT_ID>/<BUILD_REGIST>/sd-agones-sidecar:0.1
             resources:
               requests:
                 memory: "64Mi"
@@ -43,7 +43,7 @@ spec:
                 memory: "64Mi"
                 cpu: "20m"
           - name: stable-diffusion-webui
-            image: us-central1-docker.pkg.dev/<PROJECT_ID>/<BUILD_REGIST>/sd-webui:0.1
+            image: <REGION>-docker.pkg.dev/<PROJECT_ID>/<BUILD_REGIST>/sd-webui:0.1
             command: ["/bin/sh", "start.sh"]
             # https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/6722
             env:

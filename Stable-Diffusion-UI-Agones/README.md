@@ -146,24 +146,33 @@ gcloud container clusters get-credentials ${GKE_CLUSTER_NAME} --region ${REGION}
 ```
 
 ### Install GPU Driver
+For T4 and earlier GPU instances, run
 ```
 kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/container-engine-accelerators/master/nvidia-driver-installer/cos/daemonset-preloaded.yaml
 ```
-If using lateset GPU instance, e.g. G2/L4, use below command instead for a more recent driver.
+If using lateset GPU instances, i.e. G2/L4, use below command instead for a more recent driver.
 ```
 kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/container-engine-accelerators/master/nvidia-driver-installer/cos/daemonset-preloaded-latest.yaml
 ```
 
 ### Create Cloud Artifacts as Docker Repo
 ```
-BUILD_REGIST=<replace this with your preferred Artifacts repo name>
-
 gcloud artifacts repositories create ${BUILD_REGIST} --repository-format=docker \
 --location=${REGION}
 
 gcloud auth configure-docker ${REGION}-docker.pkg.dev
 ```
 
+### Grant the GKE cluster with Cloud Artifacts read access
+By default, GKE cluster is using default compute engine service account to access Artifacts registry.
+Update SERVICE_ACCOUNT_EMAIL with you default compute engine service account and run below command.
+```
+gcloud artifacts repositories add-iam-policy-binding ${BUILD_REGIST} \
+    --location=${REGION} \
+    --member=serviceAccount:SERVICE_ACCOUNT_EMAIL \
+    --role="roles/artifactregistry.reader"
+```
+For details, please refer to https://cloud.google.com/kubernetes-engine/docs/troubleshooting#permission_denied_error
 
 ### Build Stable Diffusion Image
 Build image with provided Dockerfile, push to repo in Cloud Artifacts
@@ -194,10 +203,9 @@ e.g.
 gcloud filestore instances create nfs-store --zone=us-central1-b --tier=BASIC_HDD --file-share=name="vol1",capacity=1TB --network=name=${VPC_NETWORK}
 
 ```
-Deploy the PV and PVC resource, replace the nfs-server-ip using the nfs instance's ip address that created before in the file nfs_pv.yaml. The yaml file is located in ./Stable-Diffusion-UI-Agones/agones/ folder.
+Deploy the PV and PVC resource, replace the nfs-server-ip using the nfs instance's ip address that created before in the file nfs_pv.yaml.
+Update the "path: /vol1" with fileshare created with the filestore. The yaml file is located in ./Stable-Diffusion-UI-Agones/agones/ folder.
 ```
-sed -i 's/<nfs-server-ip>/'"${FILESTORE_SERVER_IP}"'/g' ./Stable-Diffusion-UI-Agones/agones/nfs_pv.yaml
-
 kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pv.yaml
 kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pvc.yaml
 ```
@@ -275,12 +283,13 @@ gcloud builds submit \
 Deploy stable-diffusion agones deployment, please replace the image URL in the deployment.yaml and fleet yaml with the image built(nginx, optional agones-sidecar and sd-webui) before.
 ```
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones
-sed -i "s@image:.*simple-game-server:0.14@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1@" fleet_pvc.yaml
-sed -i "s@image:.*sd-webui:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1@" fleet_pvc.yaml
+sed -i "s@<REGION>@${REGION}@g" fleet_pvc.yaml
+sed -i "s@<PROJECT_ID>/<BUILD_REGIST>@${PROJECT_ID}/${BUILD_REGIST}@g" fleet_pvc.yaml
 cd -
 
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx
-sed -i "s@image:.*sd-nginx:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1@" deployment.yaml
+sed -i "s@<REGION>@${REGION}@g" deployment.yaml
+sed -i "s@<PROJECT_ID>/<BUILD_REGIST>@${PROJECT_ID}/${BUILD_REGIST}@g" deployment.yaml
 cd -
 
 kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx/deployment.yaml
@@ -311,12 +320,13 @@ kubectl annotate serviceaccount ${K8S_SA_NAME} \
 After that, remaining steps are the same, just remind to use fleet_gcs.yaml instead.
 ```
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones
-sed -i "s@image:.*simple-game-server:0.14@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-agones-sidecar:0.1@" fleet_gcs.yaml
-sed -i "s@image:.*sd-webui:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1@" fleet_gcs.yaml
+sed -i "s@<REGION>@${REGION}@g" fleet_gcs.yaml
+sed -i "s@<PROJECT_ID>/<BUILD_REGIST>@${PROJECT_ID}/${BUILD_REGIST}@g" fleet_gcs.yaml
 cd -
 
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx
-sed -i "s@image:.*sd-nginx:0.1@image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1@" deployment.yaml
+sed -i "s@<REGION>@${REGION}@g" deployment.yaml
+sed -i "s@<PROJECT_ID>/<BUILD_REGIST>@${PROJECT_ID}/${BUILD_REGIST}@g" deployment.yaml
 cd -
 
 kubectl apply -f Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx/deployment.yaml
@@ -335,6 +345,7 @@ gcloud compute networks vpc-access connectors create sd-agones-connector --netwo
 This Cloud Function work as Cruiser to monitor the idle user, by default when the user is idle for 15mins, the stable-diffusion runtime will be collected back. Please replace ${REDIS_HOST} with the redis instance ip address that record in previous step. To custom the idle timeout default setting, please overwrite setting by setting the variable TIME_INTERVAL.
 ```
 cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/cloud-function
+REDIS_HOST=$(gcloud redis instances describe sd-agones-cache --region ${REGION} --format=json 2>/dev/null | jq .host)
 gcloud functions deploy redis_http --runtime python310 --trigger-http --allow-unauthenticated --region=${REGION} --vpc-connector=sd-agones-connector --egress-settings=private-ranges-only --set-env-vars=REDIS_HOST=${REDIS_HOST}
 ```
 Record the Function trigger url.
@@ -352,7 +363,7 @@ gcloud scheduler jobs create http sd-agones-cruiser \
 ### Deploy IAP(identity awared proxy)
 To allocate isolated stable-diffusion runtime and provide user access auth capability, using the Google Cloud IAP service as an access gateway to provide the identity check and prograge the idenity to the stable-diffusion backend.
 
-Config the OAuth consent screen and OAuth credentials, check out the [guide](https://cloud.google.com/iap/docs/enabling-kubernetes-howto#oauth-configure).
+Config the OAuth consent screen(https://developers.google.com/workspace/guides/configure-oauth-consent) and OAuth credentials(https://developers.google.com/workspace/guides/create-credentials#oauth-client-id), then configure identity aware proxy for backend serivce on GKE(https://cloud.google.com/iap/docs/enabling-kubernetes-howto#oauth-configure).
 
 Create an static external ip address, record the ip address.
 ```
