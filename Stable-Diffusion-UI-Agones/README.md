@@ -211,6 +211,27 @@ Update the "path: /vol1" with fileshare created with the filestore. The yaml fil
 kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pv.yaml
 kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pvc.yaml
 ```
+**Note: You will need to initialize the files and folders in the Filestore share in order for sd-webui to run** \
+One easy way to do this,
+1. Create a VM in the same subnet with Filestore instance
+2. Mount Filestore share following this [guide](https://cloud.google.com/filestore/docs/mounting-fileshares)
+```
+sudo apt-get -y update && sudo apt-get install nfs-common -y
+sudo mkdir -p /mnt/vol1
+sudo mount -o rw,intr ${FILESTORE_IP}:/vol1 /mnt/vol1
+```
+3. Clone the A1111 repo, copy folders models/ & embeddings/ under the Filestore share mount. (This is because during initialization we will create a symlink for these two folders but the two folders are not empty)
+```
+git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
+cd stable-diffusion-webui
+cp -rp models embeddings /mnt/vol1
+```
+4. Test run and initialize the file and folders by the way  
+```
+docker run -it --gpus all -p7860:7860 -v /mnt/vol1/models/:/stable-diffusion-webui/models/ -v /mnt/vol1/embeddings/:/stable-diffusion-webui/embeddings/ ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1 /bin/bash
+python3 webui.py --listen
+```
+After these steps, files and folders should be inplace and your pods should not get CrashLoopBackoff problems.
 
 **Note: If you are using Filestore CSI, you don't need to create Gcs bucket**
 ### Create GcsFuse bucket
