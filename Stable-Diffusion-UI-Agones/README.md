@@ -132,6 +132,8 @@ gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" \
 3. TCP port 443/8080/8081 & 7000-8000 and UDP port 7000-8000
 4. For Target use gke node tag as target tag, e.g. gke-gke-01-7267dc32-node, you can find it in your VM console.
 
+**Note: for private cluster, a Cloud NAT is required for the GKE subnet. sd-webui need access to internet to automatically download necessary model files**
+
 ```
 gcloud compute firewall-rules create allow-agones \
 	--direction=INGRESS --priority=1000 --network=${VPC_NETWORK} --action=ALLOW \
@@ -363,7 +365,15 @@ gcloud scheduler jobs create http sd-agones-cruiser \
 ### Deploy IAP(identity awared proxy)
 To allocate isolated stable-diffusion runtime and provide user access auth capability, using the Google Cloud IAP service as an access gateway to provide the identity check and prograge the idenity to the stable-diffusion backend.
 
-Config the OAuth consent screen(https://developers.google.com/workspace/guides/configure-oauth-consent) and OAuth credentials(https://developers.google.com/workspace/guides/create-credentials#oauth-client-id), then configure identity aware proxy for backend serivce on GKE(https://cloud.google.com/iap/docs/enabling-kubernetes-howto#oauth-configure).
+Config the [OAuth consent screen](https://developers.google.com/workspace/guides/configure-oauth-consent) and [OAuth credentials](https://developers.google.com/workspace/guides/create-credentials#oauth-client-id), then configure [identity aware proxy for backend serivce on GKE](https://cloud.google.com/iap/docs/enabling-kubernetes-howto#oauth-configure).
+
+After created OAuth 2.0 Client IDs under OAuth credentials, update the Client ID with "Authorized redirect URIs", value should be like,
+```
+https://iap.googleapis.com/v1/oauth/clientIds/<xxx-xxx.apps.googleusercontent.com>:handleRedirect
+```
+where xxx-xxx.apps.googleusercontent.com is the Oauth 2.0 client ID you just created.
+
+**Note: if you wish to add IAP users out of your organziation, set your application's "User Type" from "internal" to "external" in "Oauth consent screen".**
 
 Create an static external ip address, record the ip address.
 ```
@@ -436,7 +446,7 @@ Clear all keys from redis before reusing it for new deployment
 ```
 redis-cli -h ${redis_host}
 keys *
-del *
+flushdb
 ```
 4. Check cloud scheduler & cloud function, the last run status should be "OK", otherwise check the logs.
 
