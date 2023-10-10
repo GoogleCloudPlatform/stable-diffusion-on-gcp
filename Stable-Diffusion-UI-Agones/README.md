@@ -24,6 +24,7 @@ gcloud services enable compute.googleapis.com artifactregistry.googleapis.com co
 constraints/compute.vmExternalIpAccess
 constraints/compute.requireShieldedVm  
 constraints/cloudfunctions.allowedIngressSettings
+constraints/iam.allowedPolicyMemberDomains(optional)
 ```
 ### Initialize the environment
 
@@ -394,8 +395,6 @@ https://iap.googleapis.com/v1/oauth/clientIds/<xxx-xxx.apps.googleusercontent.co
 ```
 where xxx-xxx.apps.googleusercontent.com is the Oauth 2.0 client ID you just created.
 
-**Note: if you wish to add IAP users out of your organziation, set your application's "User Type" from "internal" to "external" in "Oauth consent screen".**
-
 Create an static external ip address, record the ip address.
 ```
 gcloud compute addresses create sd-agones --global
@@ -404,8 +403,8 @@ gcloud compute addresses describe sd-agones --global --format=json | jq .address
 
 Config BackendConfig, replace the client_id and client_secret with the OAuth client create before.
 ```
-kubectl create secret generic iap-secret --from-literal=client_id=client_id_key \
-    --from-literal=client_secret=client_secret_key
+kubectl create secret generic iap-secret --from-literal=client_id=${client_id_key} \
+    --from-literal=client_secret=${client_secret_key}
 ```
 Change the DOMAIN_NAME1 in managed-cert.yaml with the environment domain, then deploy the depend resources.
 ```
@@ -414,7 +413,8 @@ kubectl apply -f ./ingress-iap/backendconfig.yaml
 kubectl apply -f ./ingress-iap/service.yaml
 kubectl apply -f ./ingress-iap/ingress.yaml
 ```
-Give the authorized users required priviledge to access the service. [Guide](https://cloud.google.com/iap/docs/enabling-kubernetes-howto#iap-access)
+Give the authorized users required priviledge to access the service. [Guide](https://cloud.google.com/iap/docs/enabling-kubernetes-howto#iap-access) \
+**Note: if you wish to add IAP users out of your organziation, set your application's "User Type" from "internal" to "external" in "Oauth consent screen".**
 
 ### Update DNS record for the domain
 Update your DNS record, set A record value to $(gcloud compute addresses describe sd-agones --global --format=json | jq .address) for the domain used in managed-cert.yaml
