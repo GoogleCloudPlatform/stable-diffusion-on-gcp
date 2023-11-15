@@ -45,4 +45,4 @@ spec:
             image: us-central1-docker.pkg.dev/<PROJECT_ID>/<BUILD_REGIST>/sd-webui:0.1
             resources:
               limits:
-                nvidia.com/gpu: 1
+                nvidia.com/gpu: "1"
