@@ -39,7 +39,6 @@ resource "google_project_service" "gcp_services" {
   disable_dependent_services = false
   disable_on_destroy         = false
 }
-
 # VPC
 resource "google_compute_network" "vpc" {
   project                 = var.project_id
@@ -82,9 +81,9 @@ resource "google_compute_router_nat" "nat" {
 
 # GKE cluster
 resource "google_container_cluster" "gke" {
-  name                     = "tf-gen-gke-${random_id.tf_subfix.hex}"
+  name                     = "tf-gen-cluster-${random_id.tf_subfix.hex}"
   location                 = var.filestore_zone
-  remove_default_node_pool = true
+  remove_default_node_pool = false
   enable_shielded_nodes    = true
   initial_node_count       = 1
   network                  = google_compute_network.vpc.name
