@@ -14,7 +14,7 @@ This guide provides you steps to deploy a Stable Diffusion WebUI solution in you
 | [examples](./examples) | Example folder for a working directory | 
 
 ## Introduction
-   This project demos how to effectively host the popular AUTOMATIC1111 web interface [Stable-Diffusion-WebUI](https://github.com/AUTOMATIC11111/stable-diffusion-webui).
+   This project demos how to effectively host the popular AUTOMATIC1111 web interface [Stable-Diffusion-WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui).
    This is for demo purpose, you may need minimum modification according to your needs before put into production. However, it could also be use directly as an internal project.
    
 

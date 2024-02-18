@@ -15,7 +15,7 @@
 
 
 ## 介绍
-   该项目演示了如何有效地托管流行的 AUTOMATIC1111 Web 界面 [Stable-Diffusion-WebUI](https://github.com/AUTOMATIC11111/stable-diffusion-webui)。
+   该项目演示了如何有效地托管流行的 AUTOMATIC1111 Web 界面 [Stable-Diffusion-WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)。
    这是为了演示目的，在投入生产之前，您可能需要根据您的需要进行最少的修改。 但是，它也可以直接用作内部项目。
 
 
