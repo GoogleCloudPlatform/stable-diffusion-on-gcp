@@ -20,7 +20,7 @@ terraform {
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "2.9.0"
+      version = "~> 2.3"
     }
   }
 }
@@ -57,8 +57,10 @@ resource "helm_release" "agones" {
   name             = "agones"
   repository       = "https://agones.dev/chart/stable"
   chart            = "agones"
+  force_update     = true
   namespace        = "agones-system"
   create_namespace = true
+  version          = var.agones_version
   values = [
     file("../Stable-Diffusion-UI-Agones/agones/values.yaml")
   ]

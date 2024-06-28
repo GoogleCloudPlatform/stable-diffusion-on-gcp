@@ -24,7 +24,12 @@ variable "project_id" {
   description = "GCP project id"
   type        = string
 }
-variable "gke_cluster_nodepool" {
-  description = "GCP project id"
+variable "agones_version" {
+  description = "Agones Version"
   type        = string
+}
+variable "gke_cluster_nodepool" {
+  description = "GKE Nodepool Name for agones chart"
+  type        = string
+  default     = "default-pool"
 }

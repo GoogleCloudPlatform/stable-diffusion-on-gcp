@@ -44,6 +44,7 @@ variable "google_filestore_reserved_ip_range" {
 variable "gke_cluster_nodepool" {
   description = "GCP project id"
   type        = string
+  default     = "default-pool"
 }
 variable "nginx_image_url" {
   description = "Nginx Image url"
