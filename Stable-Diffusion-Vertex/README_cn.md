@@ -94,7 +94,7 @@ Vertex AI 提供[托管训练服务](https://cloud.google.com/vertex-ai/docs/tra
 |------- image.jpeg
 ```
 ```
-gsutil cp -r dog_images gs://bucket_name/dog_images
+gcloud storage cp --recursive dog_images gs://bucket_name/dog_images
 ```
 
 2. [可选] 将您自定义的基础模型上传到 Cloud Storage

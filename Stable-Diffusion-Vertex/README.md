@@ -93,7 +93,7 @@ Vertex AI provides a [managed training service](https://cloud.google.com/vertex-
 |------- image.jpeg
 ```
 ```
-gsutil cp -r dog_images gs://bucket_name/dog_images
+gcloud storage cp --recursive dog_images gs://bucket_name/dog_images
 ```
 
 2. [Optional] Upload your customized base model to Cloud Storage
