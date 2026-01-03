@@ -147,7 +147,7 @@ else:
     job_spec = job_spec_nfs
 
 
-code_upload_cmd = f"gsutil cp -r * {BUCKET_URI}/code".format(BUCKET_URI)
+code_upload_cmd = f"gcloud storage cp --recursive * {BUCKET_URI}/code".format(BUCKET_URI)
 code_upload_process = subprocess.Popen(code_upload_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 code_upload_process.wait()
 
