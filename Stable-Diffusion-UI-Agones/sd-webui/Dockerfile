@@ -66,7 +66,6 @@ ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
 
 EXPOSE 7860
 
-COPY extensions/ /stable-diffusion-webui/extensions/
 COPY user-watch.py /stable-diffusion-webui/user-watch.py
 COPY start.sh /stable-diffusion-webui/start.sh
 COPY *.json /stable-diffusion-webui/
