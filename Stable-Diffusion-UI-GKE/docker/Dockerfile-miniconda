@@ -71,4 +71,4 @@ ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
 EXPOSE 7860
 
 WORKDIR /stable-diffusion-webui/
-CMD ["conda", "run", "--no-capture-output", "-n", "sd-webui", "python3", "launch.py", "--listen", "--xformers", "--medvram", "--enable-insecure-extension-access"]
+CMD ["conda", "run", "--no-capture-output", "-n", "sd-webui", "python3", "launch.py", "--listen", "--xformers", "--medvram"]
