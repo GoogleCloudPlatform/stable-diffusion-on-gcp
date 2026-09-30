@@ -72,4 +72,4 @@ EXPOSE 7860
 COPY *.json /stable-diffusion-webui/
 
 WORKDIR /stable-diffusion-webui/
-CMD ["python3", "webui.py", "--listen", "--opt-sdp-attention", "--enable-insecure-extension-access", "--api"]
+CMD ["python3", "webui.py", "--listen", "--opt-sdp-attention", "--api"]
