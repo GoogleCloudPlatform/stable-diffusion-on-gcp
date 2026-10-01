@@ -187,6 +187,12 @@ kubectl apply -f ./Stable-Diffusion-UI-Novel/kubernetes/deployment.yaml
 kubectl apply -f ./Stable-Diffusion-UI-Novel/kubernetes/service.yaml
 ```
 
+> **Security warning:** `service.yaml` creates an external `LoadBalancer` that exposes the WebUI (`--listen --api`) on port 7860 **without any authentication**. Anyone who knows the IP address can use the WebUI and its API. Before deploying, restrict access, for example:
+> - Set `loadBalancerSourceRanges` in `service.yaml` to the trusted client IP ranges (see the commented example in the file), or
+> - Change the service type to `ClusterIP` and expose it through an Ingress protected by [Identity-Aware Proxy](https://cloud.google.com/iap/docs/enabling-kubernetes-howto).
+>
+> It is also recommended to run the nodes with a dedicated least-privilege service account or [Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity) instead of the Compute Engine default service account.
+
 ## Enable Horizonal Pod autoscaling(HPA)
 The [Horizontal Pod Autoscaler](https://cloud.google.com/kubernetes-engine/docs/concepts/horizontalpodautoscaler) changes the shape of your Kubernetes workload by automatically increasing or decreasing the number of Pods in response to the workload's CPU or memory consumption, or in response to custom metrics reported from within Kubernetes or external metrics from sources outside of your cluster.
 Install the stackdriver adapter to enable the stable-diffusion deployment scale with GPU usage metrics.
