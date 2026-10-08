@@ -26,3 +26,6 @@ spec:
   selector:
     app: stable-diffusion
   type: LoadBalancer
+  # SECURITY: the WebUI has no authentication. Restrict who can reach it, e.g.:
+  # loadBalancerSourceRanges:
+  # - 203.0.113.0/24   # replace with your trusted client IP ranges

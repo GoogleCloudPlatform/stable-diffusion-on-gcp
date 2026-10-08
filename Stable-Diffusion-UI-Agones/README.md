@@ -128,8 +128,8 @@ gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" \
 ```
 
 ### Firewall rule setup for Agones
-1. For public cluster, allow 0.0.0.0/0
-2. For private cluster, allow access from all internal CIDR(10.0.0.0/8, 172.16.0.0/16, 192.168.0.0/24). Specifically, CIDR range for pod, but using all internal CIDR will be easier.
+1. Allow access only from internal CIDRs (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), for both public and private clusters. Specifically, the CIDR range for pods is required, but using all internal CIDRs will be easier.
+2. **Security warning: do NOT use 0.0.0.0/0.** Each game server exposes the Stable Diffusion WebUI (`--listen --api`, no authentication) and the UDP sidecar on a host port in the 7000-8000 range. Opening these ports to the internet lets anyone bypass IAP and use or disrupt the WebUI directly. Users should only reach the WebUI through the IAP-protected ingress and nginx.
 3. TCP port 443/8080/8081 & 7000-8000 and UDP port 7000-8000
 4. For Target use gke node tag as target tag, e.g. gke-gke-01-7267dc32-node, you can find it in your VM console.
 
@@ -139,7 +139,7 @@ gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" \
 gcloud compute firewall-rules create allow-agones \
 	--direction=INGRESS --priority=1000 --network=${VPC_NETWORK} --action=ALLOW \
 	--rules=tcp:443,tcp:8080,tcp:8081,tcp:7000-8000,udp:7000-8000 \
-	--source-ranges=0.0.0.0/0 \
+	--source-ranges=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 \
 	--target-tags=${GKE_NODE_NETWORK_TAG}
 ```
 

@@ -185,7 +185,7 @@ agones:
     replicas: 3
     service:
       name: agones-allocator
-      serviceType: LoadBalancer
+      serviceType: ClusterIP
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
       annotations: {}

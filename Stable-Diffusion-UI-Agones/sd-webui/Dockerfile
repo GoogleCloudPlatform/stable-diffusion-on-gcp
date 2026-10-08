@@ -49,8 +49,6 @@ RUN set -ex && cd stable-diffusion-webui \
     && git clone https://github.com/hnmr293/sd-webui-cutoff.git extensions/sd-webui-cutoff \
     && git clone https://github.com/DominikDoom/a1111-sd-webui-tagcomplete.git extensions/a1111-sd-webui-tagcomplete \
     && git clone https://github.com/Mikubill/sd-webui-controlnet.git extensions/sd-webui-controlnet \
-    && git clone https://github.com/zanllp/sd-webui-infinite-image-browsing.git extensions/sd-webui-infinite-image-browsing \
-    && git -C /stable-diffusion-webui/extensions/sd-webui-infinite-image-browsing reset --hard 4720b15126c3ee05e97d50108050d1178e50639b \
     && git clone https://github.com/aria1th/Hypernetwork-MonkeyPatch-Extension.git extensions/Hypernetwork-MonkeyPatch-Extension \
     && git clone https://github.com/butaixianran/Stable-Diffusion-Webui-Civitai-Helper.git extensions/Stable-Diffusion-Webui-Civitai-Helper \
     && git clone https://github.com/ilian6806/stable-diffusion-webui-state.git extensions/stable-diffusion-webui-state \

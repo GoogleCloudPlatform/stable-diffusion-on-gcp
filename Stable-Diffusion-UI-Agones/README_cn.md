@@ -131,8 +131,8 @@ gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" \
 ```
 
 ### 针对Agones的防火墙配置
-1. 如创建的是公有集群, 放行 0.0.0.0/0
-2. 如创建的是私有集群, 可以考虑放行所有的内网网段(10.0.0.0/8, 172.16.0.0/16, 192.168.0.0/24)。准确来说需要放行的是所有pod需要使用到的内网网段, 但放行所有内网网段会更容易一些
+1. 无论公有集群还是私有集群, 都只放行内网网段(10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)。准确来说需要放行的是所有pod需要使用到的内网网段, 但放行所有内网网段会更容易一些
+2. **安全警告: 不要放行 0.0.0.0/0。** 每个 game server 会在 7000-8000 范围内的主机端口上暴露 Stable Diffusion WebUI(`--listen --api`, 无鉴权)以及 UDP sidecar。对公网开放这些端口会让任何人绕过 IAP 直接使用或干扰 WebUI。用户应只通过受 IAP 保护的 ingress 和 nginx 访问 WebUI
 3. TCP 端口 443/8080/8081 与 7000-8000 以及 UDP 端口 7000-8000
 4. 目标设置为 GKE 节点的网络标签, e.g. gke-gke-01-7267dc32-node, 网络标签可以在 VM console里找到
 
@@ -142,7 +142,7 @@ gcloud beta container --project ${PROJECT_ID} node-pools create "gpu-pool" \
 gcloud compute firewall-rules create allow-agones \
 	--direction=INGRESS --priority=1000 --network=${VPC_NETWORK} --action=ALLOW \
 	--rules=tcp:443,tcp:8080,tcp:8081,tcp:7000-8000,udp:7000-8000 \
-	--source-ranges=0.0.0.0/0 \
+	--source-ranges=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 \
 	--target-tags=${GKE_NODE_NETWORK_TAG}
 ```
 
